@@ -1,0 +1,81 @@
+package main
+
+import "fmt"
+
+var FontSet = []uint8{
+	0xF0, 0x90, 0x90, 0x90, 0xF0, //0
+	0x20, 0x60, 0x20, 0x20, 0x70, //1
+	0xF0, 0x10, 0xF0, 0x80, 0xF0, //2
+	0xF0, 0x10, 0xF0, 0x10, 0xF0, //3
+	0x90, 0x90, 0xF0, 0x10, 0x10, //4
+	0xF0, 0x80, 0xF0, 0x10, 0xF0, //5
+	0xF0, 0x80, 0xF0, 0x90, 0xF0, //6
+	0xF0, 0x10, 0x20, 0x40, 0x40, //7
+	0xF0, 0x90, 0xF0, 0x90, 0xF0, //8
+	0xF0, 0x90, 0xF0, 0x10, 0xF0, //9
+	0xF0, 0x90, 0xF0, 0x90, 0x90, //A
+	0xE0, 0x90, 0xE0, 0x90, 0xE0, //B
+	0xF0, 0x80, 0x80, 0x80, 0xF0, //C
+	0xE0, 0x90, 0x90, 0x90, 0xE0, //D
+	0xF0, 0x80, 0xF0, 0x80, 0xF0, //E
+	0xF0, 0x80, 0xF0, 0x80, 0x80, //F
+}
+
+type CPU struct {
+	Memory    [4096]byte
+	Registers [16]byte
+	Stack     [16]uint16
+	I         uint16 //
+	PC        uint16 // Program Counter
+	SP        byte   // Stack Pointer
+	ST        byte   // Sound Timer
+	DT        byte   // Delay Timer
+}
+
+func (cpu *CPU) LoadMem() {
+	// Load rom buffer
+}
+
+func (cpu *CPU) Step() {
+	// Instruction step
+}
+
+func (cpu *CPU) Fetch() byte {
+	// Return current opcode
+	return cpu.Memory[cpu.PC]
+}
+
+func (cpu *CPU) DecodeOpCode() {
+	// Disassemble opCode
+}
+
+func (cpu *CPU) ExecuteOP() {
+	// Execute Instruction
+}
+
+func (cpu *CPU) LoadFontSet() {
+	for i := 0; i < len(FontSet); i++ {
+		cpu.Memory[i] = FontSet[i]
+	}
+}
+
+func (cpu *CPU) Reset() {
+	newCpu := &CPU{
+		PC: 0x200,
+	}
+	*cpu = *newCpu
+}
+
+func main() {
+	fmt.Println("Init Chip 8 interpreter")
+
+	cpu := &CPU{
+		PC: 0x200,
+	}
+
+	cpu.LoadFontSet()
+	fmt.Println("CPU MEMORY WITH FONTSET", cpu.Memory)
+	fmt.Println("FETCH", cpu.Fetch())
+	cpu.Reset()
+	fmt.Println("CPU MEMORY RESET", cpu.Memory)
+}
