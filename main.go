@@ -28,7 +28,7 @@ type CPU struct {
 	Memory    [4096]byte
 	Registers [16]byte
 	Stack     [16]uint16
-	I         uint16 //
+	I         uint16 // Index register
 	PC        uint16 // Program Counter
 	SP        byte   // Stack Pointer
 	ST        byte   // Sound Timer
