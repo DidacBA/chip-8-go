@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 var FontSet = []uint8{
 	0xF0, 0x90, 0x90, 0x90, 0xF0, //0
@@ -32,17 +35,29 @@ type CPU struct {
 	DT        byte   // Delay Timer
 }
 
-func (cpu *CPU) LoadMem() {
-	// Load rom buffer
+func (cpu *CPU) Load(rom []byte) error {
+	// Load memory with rom. Starts loading at the initial position of the program counter: 0x200 (512)
+
+	//Check if rom is bigger than available memory
+	if int32(len(cpu.Memory)-512) < int32(len(rom)) {
+		return fmt.Errorf("Rom size (%d) bigger than available memory (%d)", int32(len(cpu.Memory)-512), int32(len(rom)))
+	}
+
+	for i := 0; i < len(rom); i++ {
+		cpu.Memory[i+512] = rom[i]
+	}
+
+	return nil
 }
 
 func (cpu *CPU) Step() {
-	// Instruction step
+	// Instruction step (fetch, decode, execute)
 }
 
-func (cpu *CPU) Fetch() byte {
+func (cpu *CPU) Fetch() uint16 {
 	// Return current opcode
-	return cpu.Memory[cpu.PC]
+	// TODO: add check for out of bounds memory
+	return uint16(cpu.Memory[cpu.PC])<<8 | uint16(cpu.Memory[cpu.PC+1])
 }
 
 func (cpu *CPU) DecodeOpCode() {
@@ -60,10 +75,34 @@ func (cpu *CPU) LoadFontSet() {
 }
 
 func (cpu *CPU) Reset() {
+	// New CPU and set it through the pointer cpu
 	newCpu := &CPU{
 		PC: 0x200,
 	}
 	*cpu = *newCpu
+}
+
+func openRomFile(path string) ([]byte, error) {
+	// Opens rom file and returns a byte slice
+	file, err := os.OpenFile(path, os.O_RDONLY, 0777)
+	if err != nil {
+		fmt.Println("Error opening the file", path)
+		return nil, err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		fmt.Println("Error reading stats of the file", err)
+		return nil, err
+	}
+
+	romBuffer := make([]byte, fileInfo.Size())
+	if _, err := file.Read(romBuffer); err != nil {
+		return nil, err
+	}
+
+	return romBuffer, nil
 }
 
 func main() {
@@ -73,9 +112,13 @@ func main() {
 		PC: 0x200,
 	}
 
+	rompath := os.Args[1]
+
 	cpu.LoadFontSet()
-	fmt.Println("CPU MEMORY WITH FONTSET", cpu.Memory)
-	fmt.Println("FETCH", cpu.Fetch())
+	rom, err := openRomFile(rompath)
+	if err != nil {
+		fmt.Println("ERROR", err)
+	}
+	cpu.Load(rom)
 	cpu.Reset()
-	fmt.Println("CPU MEMORY RESET", cpu.Memory)
 }
