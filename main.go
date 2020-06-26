@@ -50,8 +50,12 @@ func (cpu *CPU) Load(rom []byte) error {
 	return nil
 }
 
-func (cpu *CPU) Step() {
-	// Instruction step (fetch, decode, execute)
+func (cpu *CPU) Step() (uint16, error) {
+	// Instruction step (fetch, execute)
+	opcode := cpu.Fetch()
+	if err := cpu.Execute(opcode); err != nil {
+		return opcode, err
+	}
 }
 
 func (cpu *CPU) Fetch() uint16 {
@@ -60,12 +64,109 @@ func (cpu *CPU) Fetch() uint16 {
 	return uint16(cpu.Memory[cpu.PC])<<8 | uint16(cpu.Memory[cpu.PC+1])
 }
 
-func (cpu *CPU) DecodeOpCode() {
-	// Disassemble opCode
-}
-
-func (cpu *CPU) ExecuteOP() {
+func (cpu *CPU) Execute(opcode uint16) error {
 	// Execute Instruction
+	switch opcode & 0xF000 {
+	case 0x000:
+		switch opcode {
+		case 0x00E0:
+			// CLS
+			// Clear the display
+			break
+		case 0x00EE:
+			// RET
+			// Return from a subroutine
+			break
+		}
+	case 0x1000:
+		// JP addr
+		// Jump to location nnn
+		break
+	case 0x2000:
+		// Call addr
+		// Call subroutine at nnn
+		break
+	case 0x3000:
+		// SE Vx, byte
+		// Skip next instruction if Vx = kk
+		break
+	case 0x4000:
+		// SNE Vx, byte
+		// Skip next instruction if Vx != kk
+		break
+	case 0x5000:
+		// SE Vx, Vy
+		// Skip next instruction if Vx = Vy
+		break
+	case 0x6000:
+		// LD Vx, byte
+		// Set Vx == kk
+		break
+	case 0x7000:
+		// Add Vx, byte
+		break
+	case 0x8000:
+		switch opcode & 0x000F {
+		case 0x0001:
+			// OR Vx, Vy
+			// Set Vx = Vx OR Vy
+			break
+		case 0x0002:
+			// AND Vx, Vy
+			// Set Vx = Vx AND Vy
+			break
+		case 0x0003:
+			break
+		case 0x0004:
+			break
+		case 0x0005:
+			break
+		case 0x0006:
+			break
+		case 0x0007:
+			break
+		case 0x000E:
+			break
+		}
+	case 0x9000:
+		break
+	case 0xA000:
+		break
+	case 0xB000:
+		break
+	case 0xC000:
+		break
+	case 0xD000:
+		break
+	case 0xE000:
+		switch opcode & 0x000F {
+		case 0x000E:
+			break
+		case 0x0001:
+			break
+		}
+	case 0xF000:
+		switch opcode & 0x00FF {
+		case 0x0007:
+			break
+		case 0x000A:
+			break
+		case 0x0015:
+			break
+		case 0x0018:
+			break
+		case 0x001E:
+			break
+		case 0x0029:
+			break
+		case 0x0033:
+			break
+		case 0x0055:
+			break
+		case 0x0065:
+			break
+		}
+	}
 }
 
 func (cpu *CPU) LoadFontSet() {
