@@ -95,54 +95,94 @@ func (cpu *CPU) Execute(opcode uint16) error {
 	case 0x3000:
 		// SE Vx, byte
 		// Skip next instruction if Vx = kk
-		if cpu.Registers[opcode&0x0F00] == byte(opcode&0x00FF) {
+		if cpu.Registers[(opcode&0x0F00)>>8] == byte(opcode&0x00FF) {
 			cpu.PC += 2
 		}
 		break
 	case 0x4000:
 		// SNE Vx, byte
 		// Skip next instruction if Vx != kk
-		if cpu.Registers[opcode&0x0F00] != byte(opcode&0x00FF) {
+		if cpu.Registers[(opcode&0x0F00)>>8] != byte(opcode&0x00FF) {
 			cpu.PC += 2
 		}
 		break
 	case 0x5000:
 		// SE Vx, Vy
 		// Skip next instruction if Vx = Vy
-		if cpu.Registers[opcode&0x0F00] == cpu.Registers[opcode&0x00F0] {
+		if cpu.Registers[(opcode&0x0F00)>>8] == cpu.Registers[(opcode&0x00F0)>>4] {
 			cpu.PC += 2
 		}
 		break
 	case 0x6000:
 		// LD Vx, byte
 		// Set Vx == kk
-		cpu.Registers[opcode&0x0F00] = byte(opcode & 0x00FF)
+		cpu.Registers[(opcode&0x0F00)>>8] = byte(opcode & 0x00FF)
 		break
 	case 0x7000:
 		// Add Vx, byte
-		cpu.Registers[opcode&0x0F00] = cpu.Registers[opcode&0x0F00] + byte(opcode&0x00FF)
+		cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] + byte(opcode&0x00FF)
 		break
 	case 0x8000:
 		switch opcode & 0x000F {
+		case 0x0000:
+			// Set Vx = Vy
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x00F0)>>4]
+			break
 		case 0x0001:
 			// OR Vx, Vy
 			// Set Vx = Vx OR Vy
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] | cpu.Registers[(opcode&0x00F0)>>4]
 			break
 		case 0x0002:
 			// AND Vx, Vy
 			// Set Vx = Vx AND Vy
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] & cpu.Registers[(opcode&0x00F0)>>4]
 			break
 		case 0x0003:
+			// XOR Vx, Vy
+			// Set Vx = Vx XOR Vy
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] ^ cpu.Registers[(opcode&0x00F0)>>4]
 			break
 		case 0x0004:
+			// ADD Vx, Vy
+			sum := cpu.Registers[(opcode&0x0F00)>>8] + cpu.Registers[(opcode&0x00F0)>>4]
+			if sum > 255 {
+				cpu.Registers[0xF] = 1
+			} else {
+				cpu.Registers[0xF] = 0
+			}
+			cpu.Registers[(opcode&0x0F00)>>8] = sum & 0xFF
 			break
 		case 0x0005:
+			// SUB Vx, Vy
+			if cpu.Registers[(opcode&0x0F00)>>8] > cpu.Registers[(opcode&0x00F0)>>4] {
+				cpu.Registers[0xF] = 1
+			} else {
+				cpu.Registers[0xF] = 0
+			}
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] - cpu.Registers[(opcode&0x00F0)>>4]
 			break
 		case 0x0006:
+			// SHR Vx {, Vy}
+			if cpu.Registers[(opcode&0x0F00)>>8]&0x1 == 1 {
+				cpu.Registers[0xF] = 1
+			} else {
+				cpu.Registers[0xF] = 0
+			}
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] >> 1
 			break
 		case 0x0007:
+			// SUBN Vx, Vy
+			// Set Vx = Vy - Vx, set VF = NOT borrow
+			if cpu.Registers[(opcode&0x00F0)>>4] > cpu.Registers[(opcode&0x0F00)>>8] {
+				cpu.Registers[0xF] = 1
+			} else {
+				cpu.Registers[0xF] = 0
+			}
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x00F0)>>4] - cpu.Registers[(opcode&0x0F00)>>8]
 			break
 		case 0x000E:
+
 			break
 		}
 	case 0x9000:
