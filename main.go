@@ -76,34 +76,51 @@ func (cpu *CPU) Execute(opcode uint16) error {
 		case 0x00EE:
 			// RET
 			// Return from a subroutine
+			cpu.PC = cpu.Stack[15]
+			cpu.SP -= 1
 			break
 		}
 	case 0x1000:
 		// JP addr
 		// Jump to location nnn
+		cpu.PC = opcode & 0x0FFF
 		break
 	case 0x2000:
 		// Call addr
 		// Call subroutine at nnn
+		cpu.SP += 1
+		cpu.Stack[15] = cpu.PC
+		cpu.PC = opcode & 0x0FFF
 		break
 	case 0x3000:
 		// SE Vx, byte
 		// Skip next instruction if Vx = kk
+		if cpu.Registers[opcode&0x0F00] == byte(opcode&0x00FF) {
+			cpu.PC += 2
+		}
 		break
 	case 0x4000:
 		// SNE Vx, byte
 		// Skip next instruction if Vx != kk
+		if cpu.Registers[opcode&0x0F00] != byte(opcode&0x00FF) {
+			cpu.PC += 2
+		}
 		break
 	case 0x5000:
 		// SE Vx, Vy
 		// Skip next instruction if Vx = Vy
+		if cpu.Registers[opcode&0x0F00] == cpu.Registers[opcode&0x00F0] {
+			cpu.PC += 2
+		}
 		break
 	case 0x6000:
 		// LD Vx, byte
 		// Set Vx == kk
+		cpu.Registers[opcode&0x0F00] = byte(opcode & 0x00FF)
 		break
 	case 0x7000:
 		// Add Vx, byte
+		cpu.Registers[opcode&0x0F00] = cpu.Registers[opcode&0x0F00] + byte(opcode&0x00FF)
 		break
 	case 0x8000:
 		switch opcode & 0x000F {
