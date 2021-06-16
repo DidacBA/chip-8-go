@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 var FontSet = []uint8{
@@ -50,12 +51,11 @@ func (cpu *CPU) Load(rom []byte) error {
 	return nil
 }
 
-func (cpu *CPU) Step() (uint16, error) {
+func (cpu *CPU) Step() uint16 {
 	// Instruction step (fetch, execute)
 	opcode := cpu.Fetch()
-	if err := cpu.Execute(opcode); err != nil {
-		return opcode, err
-	}
+	cpu.Execute(opcode)
+	return opcode
 }
 
 func (cpu *CPU) Fetch() uint16 {
@@ -66,18 +66,21 @@ func (cpu *CPU) Fetch() uint16 {
 
 func (cpu *CPU) Execute(opcode uint16) error {
 	// Execute Instruction
+	// fmt.Println(strconv.FormatUint(uint64(opcode&0xF000), 16))
 	switch opcode & 0xF000 {
 	case 0x000:
 		switch opcode {
 		case 0x00E0:
 			// CLS
 			// Clear the display
+			cpu.PC += 2
 			break
 		case 0x00EE:
 			// RET
 			// Return from a subroutine
 			cpu.PC = cpu.Stack[15]
 			cpu.SP -= 1
+			cpu.PC += 2
 			break
 		}
 	case 0x1000:
@@ -95,6 +98,7 @@ func (cpu *CPU) Execute(opcode uint16) error {
 	case 0x3000:
 		// SE Vx, byte
 		// Skip next instruction if Vx = kk
+		cpu.PC += 2
 		if cpu.Registers[(opcode&0x0F00)>>8] == byte(opcode&0x00FF) {
 			cpu.PC += 2
 		}
@@ -102,6 +106,7 @@ func (cpu *CPU) Execute(opcode uint16) error {
 	case 0x4000:
 		// SNE Vx, byte
 		// Skip next instruction if Vx != kk
+		cpu.PC += 2
 		if cpu.Registers[(opcode&0x0F00)>>8] != byte(opcode&0x00FF) {
 			cpu.PC += 2
 		}
@@ -109,6 +114,7 @@ func (cpu *CPU) Execute(opcode uint16) error {
 	case 0x5000:
 		// SE Vx, Vy
 		// Skip next instruction if Vx = Vy
+		cpu.PC += 2
 		if cpu.Registers[(opcode&0x0F00)>>8] == cpu.Registers[(opcode&0x00F0)>>4] {
 			cpu.PC += 2
 		}
@@ -117,21 +123,25 @@ func (cpu *CPU) Execute(opcode uint16) error {
 		// LD Vx, byte
 		// Set Vx == kk
 		cpu.Registers[(opcode&0x0F00)>>8] = byte(opcode & 0x00FF)
+		cpu.PC += 2
 		break
 	case 0x7000:
 		// Add Vx, byte
 		cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] + byte(opcode&0x00FF)
+		cpu.PC += 2
 		break
 	case 0x8000:
 		switch opcode & 0x000F {
 		case 0x0000:
 			// Set Vx = Vy
 			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x00F0)>>4]
+			cpu.PC += 2
 			break
 		case 0x0001:
 			// OR Vx, Vy
 			// Set Vx = Vx OR Vy
 			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] | cpu.Registers[(opcode&0x00F0)>>4]
+			cpu.PC += 2
 			break
 		case 0x0002:
 			// AND Vx, Vy
@@ -142,6 +152,7 @@ func (cpu *CPU) Execute(opcode uint16) error {
 			// XOR Vx, Vy
 			// Set Vx = Vx XOR Vy
 			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] ^ cpu.Registers[(opcode&0x00F0)>>4]
+			cpu.PC += 2
 			break
 		case 0x0004:
 			// ADD Vx, Vy
@@ -152,6 +163,7 @@ func (cpu *CPU) Execute(opcode uint16) error {
 				cpu.Registers[0xF] = 0
 			}
 			cpu.Registers[(opcode&0x0F00)>>8] = sum & 0xFF
+			cpu.PC += 2
 			break
 		case 0x0005:
 			// SUB Vx, Vy
@@ -161,6 +173,7 @@ func (cpu *CPU) Execute(opcode uint16) error {
 				cpu.Registers[0xF] = 0
 			}
 			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] - cpu.Registers[(opcode&0x00F0)>>4]
+			cpu.PC += 2
 			break
 		case 0x0006:
 			// SHR Vx {, Vy}
@@ -180,50 +193,81 @@ func (cpu *CPU) Execute(opcode uint16) error {
 				cpu.Registers[0xF] = 0
 			}
 			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x00F0)>>4] - cpu.Registers[(opcode&0x0F00)>>8]
+			cpu.PC += 2
 			break
 		case 0x000E:
-
+			// SHL Vx {, Vy}
+			// Set Vx = Vx SHL 1
+			if cpu.Registers[(opcode&0x0F00)>>8]&0x8 == 0x8 {
+				cpu.Registers[0xF] = 1
+			} else {
+				cpu.Registers[0xF] = 0
+			}
+			cpu.Registers[(opcode&0x0F00)>>8] = cpu.Registers[(opcode&0x0F00)>>8] * 2
 			break
 		}
 	case 0x9000:
+		// Skip next instruction if Vx != Vy
+		if cpu.Registers[(opcode&0x0F00)>>8] != cpu.Registers[(opcode&0x00F0)>>4] {
+			cpu.PC += 2
+		}
 		break
 	case 0xA000:
+		// Set I = nnn
+		cpu.I = opcode & 0x0FFF
 		break
 	case 0xB000:
+		// JP V0, addr
+		// Jump to location nnn + V0
+		cpu.PC = (opcode & 0x0FFF) + uint16(cpu.Registers[0])
 		break
 	case 0xC000:
+		fmt.Printf("Unimplemented instruction %d", opcode)
 		break
 	case 0xD000:
+		fmt.Printf("Unimplemented instruction %d", opcode)
 		break
 	case 0xE000:
 		switch opcode & 0x000F {
 		case 0x000E:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0001:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		}
 	case 0xF000:
 		switch opcode & 0x00FF {
 		case 0x0007:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x000A:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0015:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0018:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x001E:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0029:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0033:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0055:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		case 0x0065:
+			fmt.Printf("Unimplemented instruction %d", opcode)
 			break
 		}
 	}
+	return nil
 }
 
 func (cpu *CPU) LoadFontSet() {
@@ -278,5 +322,8 @@ func main() {
 		fmt.Println("ERROR", err)
 	}
 	cpu.Load(rom)
-	cpu.Reset()
+	for {
+		opcode := cpu.Step()
+		fmt.Println(strconv.FormatUint(uint64(opcode), 16))
+	}
 }
