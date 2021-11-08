@@ -315,6 +315,10 @@ func main() {
 	}
 
 	rompath := os.Args[1]
+	if rompath == "" {
+		fmt.Println("Please write the path to a rom")
+		os.Exit(1)
+	}
 
 	cpu.LoadFontSet()
 	rom, err := openRomFile(rompath)
